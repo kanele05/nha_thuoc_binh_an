@@ -56,7 +56,7 @@ public class DialogDoiMatKhau extends JDialog {
         btnHuy.addActionListener(e -> dispose());
         
         JButton btnLuu = new JButton("Xác nhận");
-        btnLuu.putClientProperty(FlatClientProperties.STYLE, "background:$Accent.color; foreground:#fff; font:bold");
+        btnLuu.putClientProperty(FlatClientProperties.STYLE, "background:#4CAF50; foreground:#fff; font:bold");
         btnLuu.addActionListener(e -> actionChangePass());
         
         pFooter.add(btnHuy);
