@@ -17,8 +17,6 @@ import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 import gui.application.Application;
 import gui.application.form.other.FormDashboard;
-import gui.application.form.other.FormInbox;
-import gui.application.form.other.FormRead;
 import gui.menu.Menu;
 import gui.menu.MenuAction;
 import raven.application.form.FormNhanVien;
