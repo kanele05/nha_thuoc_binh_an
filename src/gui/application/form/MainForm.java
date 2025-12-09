@@ -21,6 +21,7 @@ import gui.application.form.other.FormInbox;
 import gui.application.form.other.FormRead;
 import gui.menu.Menu;
 import gui.menu.MenuAction;
+import raven.application.form.FormNhanVien;
 
 /**
  *
@@ -108,30 +109,37 @@ public class MainForm extends JLayeredPane {
                     Application.showForm(form);
                     form.openThemMoi();
                 }
-            }else if (index == 6) { // Khách hàng
-                if (subIndex == 1) { // Danh sách
+            }else if (index == 6) { 
+                if (subIndex == 1) {
+                    Application.showForm(new FormNhanVien());
+                } else if (subIndex == 2) { 
+                    FormNhanVien form = new FormNhanVien();
+                    Application.showForm(form);
+                    form.openThemMoi(); 
+                }
+            }else if (index == 7) { 
+                if (subIndex == 1) { 
                     Application.showForm(new FormKhachHang());
-                } else if (subIndex == 2) { // Thêm mới
-                    // Cách 1: Mở form danh sách rồi bật dialog thêm luôn
+                } else if (subIndex == 2) { 
                     FormKhachHang form = new FormKhachHang();
                     Application.showForm(form);
                     form.openThemMoi(); 
                 }
-            }else if (index == 7) { // Nhà cung cấp
+            }else if (index == 8) { // Nhà cung cấp
                 Application.showForm(new FormNhaCungCap());
-            }else if (index == 8) { // Báo cáo
+            }else if (index == 9) { // Báo cáo
                 if (subIndex == 1) { // Báo cáo doanh thu
                     Application.showForm(new FormBaoCaoDoanhThu());
                 } else if (subIndex == 2) {
                     Application.showForm(new FormBaoCaoTonKho());
                 }
-            }else if (index == 9) { // Cảnh báo
+            }else if (index == 10) { // Cảnh báo
                 if (subIndex == 1) { // Sắp hết hạn
                     Application.showForm(new FormCanhBaoHetHan());
                 } else if (subIndex == 2) { // Tồn kho thấp
                     Application.showForm(new FormCanhBaoTonKho());
                 }
-            }else if (index == 10) { // Cảnh báo
+            }else if (index == 11) { // Cảnh báo
                 if (subIndex == 1) { // Sắp hết hạn
                     Application.showForm(new FormHoSo());
                 } else if (subIndex == 2) { // Tồn kho thấp

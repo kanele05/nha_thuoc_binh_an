@@ -31,6 +31,7 @@ public class Menu extends JPanel {
         {"Phiếu nhập", "Danh sách phiếu nhập", "Lập phiếu nhập"},
         {"Lô thuốc", "Danh sách lô thuốc"},
         {"Bảng giá", "Danh sách bảng giá", "Tạo bảng giá mới"},
+        {"Nhân viên", "Danh sách nhân viên", "Thêm nhân viên"},
         {"Khách hàng", "Danh sách khách hàng", "Thêm khách hàng"},
         {"Nhà cung cấp", "Danh sách nhà cung cấp"},
         {"Báo cáo", "Báo cáo doanh thu", "Báo cáo tồn kho"},
