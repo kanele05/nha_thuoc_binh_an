@@ -4,10 +4,6 @@
  */
 package entities;
 
-/**
- *
- * @author khang
- */
 public class NhaCungCap {
     private String maNCC;
     private String tenNCC;
@@ -23,6 +19,12 @@ public class NhaCungCap {
         this.diaChi = diaChi;
     }
 
+    public NhaCungCap() {
+    }
+
+    public NhaCungCap(String maNCC) {
+        this.maNCC = maNCC;
+    }
     public String getMaNCC() {
         return maNCC;
     }

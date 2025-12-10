@@ -25,6 +25,13 @@ public class Thuoc {
         this.nhomThuoc = nhomThuoc;
     }
 
+    public Thuoc() {
+    }
+    
+    public Thuoc(String maThuoc) {
+        this.maThuoc = maThuoc;
+    }
+
     public String getMaThuoc() {
         return maThuoc;
     }

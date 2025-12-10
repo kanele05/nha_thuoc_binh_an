@@ -1,5 +1,7 @@
 package gui.application.form;
 
+import gui.application.form.PhieuNhap.FormDanhSachPhieuNhap;
+import gui.application.form.PhieuNhap.FormNhapHang;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.util.UIScale;

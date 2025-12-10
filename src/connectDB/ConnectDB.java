@@ -18,7 +18,7 @@ public class ConnectDB {
     }
 
     public void connect() throws SQLException {
-        String url = "jdbc:sqlserver://localhost:14330;databaseName=QLNHATHUOC;trustServerCertificate=true;";
+        String url = "jdbc:sqlserver://localhost:14330;databaseName=QLTHUOC;trustServerCertificate=true;";
         String user = "sa";
         String password = "sapassword";
         if (con == null || con.isClosed()){

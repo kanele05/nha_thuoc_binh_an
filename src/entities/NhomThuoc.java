@@ -17,6 +17,9 @@ public class NhomThuoc {
         this.tenNhom = tenNhom;
     }
 
+    public NhomThuoc() {
+    }
+
     public String getMaNhom() {
         return maNhom;
     }

@@ -107,6 +107,7 @@ public class FormNhaCungCap extends JPanel {
 
     // --- Actions ---
 
+    
     private void actionThem() {
         DialogNhaCungCap dialog = new DialogNhaCungCap(this, null);
         dialog.setVisible(true);

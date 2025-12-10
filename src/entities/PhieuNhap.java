@@ -27,6 +27,13 @@ public class PhieuNhap {
         this.ncc = ncc;
     }
 
+    public PhieuNhap() {
+    }
+    
+    public PhieuNhap(String maPN) {
+        this.maPN = maPN;
+    }
+
     public String getMaPN() {
         return maPN;
     }
@@ -34,7 +41,6 @@ public class PhieuNhap {
     public void setMaPN(String maPN) {
         this.maPN = maPN;
     }
-
     public LocalDate getNgayTao() {
         return ngayTao;
     }
@@ -78,6 +84,9 @@ public class PhieuNhap {
     @Override
     public String toString() {
         return "PhieuNhap{" + "maPN=" + maPN + ", ngayTao=" + ngayTao + ", tongTien=" + tongTien + ", trangThai=" + trangThai + ", nhanVien=" + nhanVien + ", ncc=" + ncc + '}';
+    }    
+
+    public String setNhanVien(String nguoiNhap) {
+        return "Admin";
     }
-    
 }

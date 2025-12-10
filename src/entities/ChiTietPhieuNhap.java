@@ -5,6 +5,7 @@
 package entities;
 
 import java.time.LocalDate;
+import java.util.Objects;
 
 /**
  *
@@ -27,6 +28,9 @@ public class ChiTietPhieuNhap {
         this.soLuong = soLuong;
         this.donGia = donGia;
         this.thanhTien = thanhTien;
+    }
+
+    public ChiTietPhieuNhap() {
     }
 
     public PhieuNhap getPn() {
@@ -89,5 +93,31 @@ public class ChiTietPhieuNhap {
     public String toString() {
         return "ChiTietPhieuNhap{" + "pn=" + pn + ", thuoc=" + thuoc + ", loThuoc=" + loThuoc + ", hanSuDung=" + hanSuDung + ", soLuong=" + soLuong + ", donGia=" + donGia + ", thanhTien=" + thanhTien + '}';
     }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 17 * hash + Objects.hashCode(this.pn);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final ChiTietPhieuNhap other = (ChiTietPhieuNhap) obj;
+        return true;
+    }
+
+    
+
+
     
 }

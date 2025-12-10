@@ -38,7 +38,9 @@ public class NhanVien {
     public NhanVien(){
         
     }
-
+    public NhanVien(String maNV){
+        this.maNV = maNV;
+        }
     public String getMaNV() {
         return maNV;
     }
