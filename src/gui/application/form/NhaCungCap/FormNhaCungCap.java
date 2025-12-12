@@ -1,7 +1,11 @@
-package gui.application.form;
+package gui.application.form.NhaCungCap;
 
 import com.formdev.flatlaf.FlatClientProperties;
+import dao.NhaCungCapDAO;
+
+import entities.NhaCungCap;
 import java.awt.Component;
+import java.util.ArrayList;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -13,7 +17,7 @@ public class FormNhaCungCap extends JPanel {
     private JTextField txtTimKiem;
     private JTable table;
     private DefaultTableModel model;
-
+    private NhaCungCapDAO nccDao = new NhaCungCapDAO();
     public FormNhaCungCap() {
         initComponents();
         init();
@@ -98,16 +102,26 @@ public class FormNhaCungCap extends JPanel {
     }
 
     private void loadData() {
-        // Mock data
-        model.addRow(new Object[]{"NCC001", "Dược Hậu Giang (DHG)", "02923891433", "dhgpharma@dhgpharma.com.vn", "288 Nguyễn Văn Cừ, Cần Thơ"});
-        model.addRow(new Object[]{"NCC002", "Sanofi Việt Nam", "02838298526", "contact-vn@sanofi.com", "Q1, TP.HCM"});
-        model.addRow(new Object[]{"NCC003", "Zuellig Pharma", "02839102650", "info@zuelligpharma.com", "Tân Bình, TP.HCM"});
-        model.addRow(new Object[]{"NCC004", "Dược phẩm Imexpharm", "02773851941", "imexpharm@imexpharm.com", "Cao Lãnh, Đồng Tháp"});
+        model.setRowCount(0);
+        ArrayList<NhaCungCap> list = nccDao.getAllTblNhaCungCap();
+        
+        for(NhaCungCap ncc : list){
+            String maNcc = ncc.getMaNCC();
+            String tenNcc = ncc.getTenNCC();
+            String sdt = ncc.getSdt();
+            String email = ncc.getEmail();
+            String diaChi = ncc.getDiaChi();
+            
+            model.addRow(new Object[]{
+                maNcc,
+                tenNcc,
+                sdt,
+                email,
+                diaChi
+            });
+        }
     }
 
-    // --- Actions ---
-
-    
     private void actionThem() {
         DialogNhaCungCap dialog = new DialogNhaCungCap(this, null);
         dialog.setVisible(true);

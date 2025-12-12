@@ -31,7 +31,6 @@ public class Thuoc {
     public Thuoc(String maThuoc) {
         this.maThuoc = maThuoc;
     }
-
     public String getMaThuoc() {
         return maThuoc;
     }

@@ -8,8 +8,8 @@ import java.sql.*;
  *
  * @author LENOVO
  */
-public class NhaCungCapDao {    
-       public NhaCungCapDao(){};
+public class NhaCungCapDAO {    
+       public NhaCungCapDAO(){};
        public ArrayList<NhaCungCap> getAllTblNhaCungCap() {
            ArrayList<NhaCungCap> dsncc = new ArrayList<>();
            try {
@@ -68,4 +68,17 @@ public class NhaCungCapDao {
            }
            return ma;
        }
+       public String getTenNCCByMa(String maNCC) {
+    	    try {
+    	        Connection con = ConnectDB.getConnection();
+    	        PreparedStatement ps = con.prepareStatement("SELECT tenNCC FROM NhaCungCap WHERE maNCC = ?");
+    	        ps.setString(1, maNCC);
+    	        ResultSet rs = ps.executeQuery();
+    	        if (rs.next()) return rs.getString("tenNCC");
+    	    } catch (Exception e) {
+    	        e.printStackTrace();
+    	    }
+    	    return null;
+    	}
+
 }

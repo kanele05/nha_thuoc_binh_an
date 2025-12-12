@@ -2,14 +2,20 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
  */
-package gui.application.form;
+package gui.application.form.LoThuoc;
 
 import com.formdev.flatlaf.FlatClientProperties;
+import dao.LoThuocDAO;
+import entities.LoThuoc;
+
 import java.awt.Color;
 import java.awt.Component;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
@@ -21,14 +27,14 @@ public class FormQuanLyLoThuoc extends javax.swing.JPanel {
     private JComboBox<String> cbTrangThai;
     private JTable table;
     private DefaultTableModel model;
-    
+    private LoThuocDAO ltDao = new LoThuocDAO();
     // Formatter ngày tháng
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    public FormQuanLyLoThuoc() {
+    public FormQuanLyLoThuoc() throws SQLException {
         initComponents();
         init();
     }
-    private void init() {
+    private void init() throws SQLException {
         setLayout(new MigLayout("wrap,fill,insets 20", "[fill]", "[][][grow]"));
 
         // 1. Header
@@ -155,7 +161,7 @@ public class FormQuanLyLoThuoc extends javax.swing.JPanel {
         }
     }
 
-    private void loadData() {
+    private void loadData() throws SQLException {
         // Mock data với các trường hợp Date khác nhau
         // Giả sử hôm nay là ngày hiện tại, bạn hãy tự cộng trừ để thấy màu
         
@@ -164,10 +170,36 @@ public class FormQuanLyLoThuoc extends javax.swing.JPanel {
         String near = now.plusDays(45).format(dateFormatter);     // Còn 45 ngày (Sắp hết)
         String good = now.plusYears(1).format(dateFormatter);     // Còn 1 năm (Tốt)
         
-        model.addRow(new Object[]{"A101", "Paracetamol 500mg", "01/01/2023", expired, "50", "Đã hết hạn"});
-        model.addRow(new Object[]{"B202", "Berberin", "01/06/2023", near, "120", "Sắp hết hạn"});
-        model.addRow(new Object[]{"C303", "Vitamin C", "10/10/2023", good, "500", "Còn hạn"});
-        model.addRow(new Object[]{"D404", "Khẩu trang Y tế", "05/05/2023", near, "20", "Sắp hết hạn"});
+        model.setRowCount(0);
+
+        ArrayList<LoThuoc> list = ltDao.getAllLoThuoc();
+        for(LoThuoc lt : list ) {
+        	String maLo  = lt.getMaLo();
+        	String tenThuoc = lt.getThuoc().getTenThuoc();
+        	String ngayNhap = lt.getNgayNhap().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        	String hanSuDung = lt.getHanSuDung().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        	int tonKho = lt.getSoLuongTon();
+        	
+        	long checkHSD = ChronoUnit.DAYS.between(now, lt.getHanSuDung());
+        	String trangThai;
+        	if(checkHSD < 0) {
+        		trangThai = "Đã hết hạn";
+        	} else if(checkHSD <= 60) {
+        		trangThai = "Sắp hết hạn";
+        	}
+        	else {
+        		trangThai = "Còn hạn";
+        	}
+        	  model.addRow(new Object[] {
+              		maLo,
+              		tenThuoc,
+              		ngayNhap,
+              		hanSuDung,
+              		tonKho,
+              		trangThai
+              });
+        }
+      
     }
     
     private void filterData() {

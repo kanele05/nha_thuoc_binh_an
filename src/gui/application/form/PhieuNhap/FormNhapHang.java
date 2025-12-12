@@ -4,7 +4,7 @@ import com.formdev.flatlaf.FlatClientProperties;
 import connectDB.ConnectDB;
 import dao.ChiTietPhieuNhapDAO;
 import dao.LoThuocDAO;
-import dao.NhaCungCapDao;
+import dao.NhaCungCapDAO;
 import dao.PhieuNhapDAO;
 import dao.ThuocDAO;
 import entities.ChiTietPhieuNhap;
@@ -14,7 +14,7 @@ import entities.NhanVien;
 import entities.NhomThuoc;
 import entities.PhieuNhap;
 import entities.Thuoc;
-import gui.application.form.DialogNhaCungCap;
+import gui.application.form.NhaCungCap.DialogNhaCungCap;
 import java.awt.Component;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
@@ -27,6 +27,7 @@ import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
@@ -87,7 +88,7 @@ public class FormNhapHang extends javax.swing.JPanel {
         panel.putClientProperty(FlatClientProperties.STYLE, ""
                 + "arc:20;"
                 + "background:darken(@background,3%)");
-        NhaCungCapDao nccDao = new NhaCungCapDao();
+        NhaCungCapDAO nccDao = new NhaCungCapDAO();
         ArrayList<String> dsNCC = nccDao.getAllTenNhaCungCap();
         String[] items = dsNCC.toArray(new String[0]);
         cbNhaCungCap = new JComboBox<>(items);
@@ -107,24 +108,41 @@ public class FormNhapHang extends javax.swing.JPanel {
         
         panel.add(new JLabel("Người nhập:"));
         panel.add(txtNguoiNhap, "w 300");
-
-        // Nút chức năng bên phải
+        JButton btnAddHang = new JButton("Thêm hàng");
+        JButton btnXoaHang = new JButton("Xóa hàng");
         JButton btnMau = new JButton("Tải file mẫu");
         btnMau.addActionListener(e -> actionDownloadTemplate());
+        btnAddHang.addActionListener(e -> actionThemHang());
         JButton btnImport = new JButton("Nhập từ Excel");
         btnImport.putClientProperty(FlatClientProperties.STYLE, ""
                 + "background:#009688;"
                 + "foreground:#ffffff;"
                 + "font:bold;"
                 + "iconTextGap:10"); 
+        btnXoaHang.putClientProperty(FlatClientProperties.STYLE, ""
+                + "background:#F44336;"
+                + "foreground:#ffffff;"
+                + "font:bold;"
+                + "iconTextGap:10"); 
+        btnAddHang.putClientProperty(FlatClientProperties.STYLE, ""
+                + "background:#35e838;"
+                + "foreground:#ffffff;"
+                + "font:bold;"
+                + "iconTextGap:10");
+        btnMau.putClientProperty(FlatClientProperties.STYLE, ""
+                + "background:#ffffff;"              
+                + "font:bold;"
+                + "iconTextGap:10");
         btnImport.addActionListener(e -> importExcel());
 
         panel.add(btnMau, "cell 2 0, span 1 2, right");
         panel.add(btnImport, "cell 3 0, span 1 2");
+        panel.add(btnXoaHang,"cell 4 0, span 1 2, left");
+        panel.add(btnAddHang,"cell 5 0, span 1 2");
 
         return panel;
     }
-    // Hàm tạo file mẫu CSV (Excel mở được)
+
     private void actionDownloadTemplate() {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setDialogTitle("Lưu file mẫu nhập hàng");
@@ -238,77 +256,88 @@ public class FormNhapHang extends javax.swing.JPanel {
         fileChooser.setDialogTitle("Chọn file Excel");
 
         if (fileChooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
-
         File file = fileChooser.getSelectedFile();
 
-        try {
-            FileInputStream fis = new FileInputStream(file);
-            Workbook workbook;
-            if (file.getName().toLowerCase().endsWith(".xlsx"))
-                workbook = new XSSFWorkbook(fis);
-            else
-                workbook = new HSSFWorkbook(fis);
+        try (FileInputStream fis = new FileInputStream(file);
+             Workbook workbook = file.getName().toLowerCase().endsWith(".xlsx")
+                 ? new XSSFWorkbook(fis) : new HSSFWorkbook(fis)) {
 
             Sheet sheet = workbook.getSheetAt(0);
             model.setRowCount(0);
+
+            List<ExcelImportError> errors = validateExcelData(sheet);
+
+            if (!errors.isEmpty()) {
+                StringBuilder msg = new StringBuilder("<html><b>Không thể import do có lỗi:</b><br><br>");
+                for (int i = 0; i < Math.min(20, errors.size()); i++) {
+                    ExcelImportError e = errors.get(i);
+                    msg.append("Dòng ").append(e.row).append(": ").append(e.message).append("<br>");
+                }
+                if (errors.size() > 20) {
+                    msg.append("... và ").append(errors.size() - 20).append(" lỗi khác.");
+                }
+                msg.append("</html>");
+
+                JOptionPane.showMessageDialog(this, msg.toString(),
+                    "Lỗi dữ liệu Excel", JOptionPane.ERROR_MESSAGE);
+                return; 
+            }
             final int LOT_START_COL = 5;
 
             for (int r = 1; r <= sheet.getLastRowNum(); r++) {
                 Row row = sheet.getRow(r);
                 if (row == null) continue;
 
-                int excelRow = r + 1;
-
                 String ma = getCellString(row.getCell(0));
                 String ten = getCellString(row.getCell(1));
                 String dvt = getCellString(row.getCell(2));
                 Double dongia = getCellNumber(row.getCell(3));
-                Double tongSL = getCellNumber(row.getCell(4)); 
+                Double tongSL = getCellNumber(row.getCell(4));
 
                 int lastCellNum = row.getLastCellNum();
-                if (lastCellNum <= LOT_START_COL) {
-                    continue;
-                }
-                for (int c = LOT_START_COL; c + 2 < lastCellNum; c += 3) {
-                    String lo = getCellString(row.getCell(c));           // Lô
-                    Date hsd = getCellDate(row.getCell(c + 1));         // Hạn sử dụng
-                    Double sl = getCellNumber(row.getCell(c + 2));      // Số lượng lô
 
-                    boolean loEmpty = (lo == null || lo.trim().isEmpty());
-                    boolean hsdEmpty = (hsd == null);
-                    boolean slEmpty = (sl == null || sl == 0.0);
-                    Double thanhTien = sl*dongia;
-                   
-                    if (loEmpty && hsdEmpty && slEmpty) {
-                        continue;
-                    }
-                    if (sl == null) sl = 0.0;
+                for (int c = LOT_START_COL; c + 2 < lastCellNum; c += 3) {
+                    String lo = getCellString(row.getCell(c));
+                    Date hsdDate = getCellDate(row.getCell(c + 1));
+                    Double sl = getCellNumber(row.getCell(c + 2));
+
+                    boolean allEmpty = (lo == null || lo.trim().isEmpty())
+                            && hsdDate == null
+                            && (sl == null || sl <= 0);
+                    if (allEmpty) continue;
+
+                    double thanhTien = (dongia != null ? dongia : 0) * (sl != null ? sl : 0);
+
+                    String hsdFormatted = hsdDate == null ? "" :
+                        DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                            .format(hsdDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
+
                     model.addRow(new Object[]{
-                            ma,      
-                            ten,     
-                            dvt,      
-                            formatMoney(dongia),
-                            tongSL,
-                            lo,      
-                            sl,  
-                            formatDate(hsd),
-                            formatMoney(thanhTien)
+                        ma,
+                        ten.isEmpty() ? "Không tên" : ten,
+                        dvt.isEmpty() ? "Hộp" : dvt,
+                        formatMoney(dongia),
+                        tongSL,
+                        lo,
+                        sl,
+                        hsdFormatted,
+                        formatMoney(thanhTien)
                     });
                 }
             }
 
-            workbook.close();
-            fis.close();
+            JOptionPane.showMessageDialog(this,
+                "Import thành công " + model.getRowCount() + " lô thuốc!",
+                "Thành công", JOptionPane.INFORMATION_MESSAGE);
 
-            JOptionPane.showMessageDialog(this, "Nhập file Excel thành công!");
             tinhTienHang();
 
         } catch (Exception e) {
             e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi: " + e.getMessage(),
-                    "Lỗi", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Lỗi đọc file: " + e.getMessage(),
+                "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
-    }
+}
      private void actionThem() {
         DialogNhaCungCap dialog = new DialogNhaCungCap(this, null);
         dialog.setVisible(true);
@@ -316,10 +345,28 @@ public class FormNhapHang extends javax.swing.JPanel {
             model.addRow(dialog.getData());
             Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Thêm nhà cung cấp thành công!");
         }
+    }     
+    private void actionThemHang() {
+        DialogAddHang dialog = new DialogAddHang(this, null);
+        dialog.setVisible(true);
+        if(dialog.isSave()){
+            model.addRow(dialog.getData());
+            Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.TOP_CENTER, "Thêm hàng hóa thành công!");
+        }
     }
-
-  // ====================== 1. HÀM CHÍNH ======================
-     private void actionLuuPhieu() {
+    private void actionHuy() {
+    	    int confirm = JOptionPane.showConfirmDialog(this, 
+    	            "Bạn có chắc muốn hủy phiếu nhập này?\nTất cả dữ liệu sẽ bị xóa.", 
+    	            "Xác nhận hủy", JOptionPane.YES_NO_OPTION);
+    	    
+    	    if (confirm == JOptionPane.YES_OPTION) {
+    	        model.setRowCount(0);
+    	        lbTongTien.setText("0 ₫");
+    	        txtGhiChu.setText("");
+    	        Notifications.getInstance().show(Notifications.Type.INFO, Notifications.Location.TOP_CENTER, "Đã hủy phiếu nhập.");
+    	    }
+    	}
+    private void actionLuuPhieu() {
          if (!kiemTraDauVao()) return;
 
          int confirm = JOptionPane.showConfirmDialog(this,
@@ -349,27 +396,65 @@ public class FormNhapHang extends javax.swing.JPanel {
          }
      }
 
-     // ====================== 2. KIỂM TRA ĐẦU VÀO ======================
-     private boolean kiemTraDauVao() {
-         if (model.getRowCount() == 0) {
-             thongBao("Danh sách đang trống!");
-             return false;
-         }
-         if (cbNhaCungCap.getSelectedItem() == null) {
-             thongBao("Chưa chọn nhà cung cấp!");
-             return false;
-         }
-         for (int i = 0; i < model.getRowCount(); i++) {
-             if (getCell(i, 5).isEmpty() || getCell(i, 7).isEmpty()) {
-                 thongBao("Dòng " + (i + 1) + " thiếu số lô hoặc hạn sử dụng!");
-                 table.setRowSelectionInterval(i, i);
-                 return false;
-             }
-         }
-         return true;
-     }
+    private boolean kiemTraDauVao() {
+    	    if (model.getRowCount() == 0) {
+    	        thongBao("Chưa có dữ liệu để lưu!");
+    	        return false;
+    	    }
+    	    if (cbNhaCungCap.getSelectedItem() == null) {
+    	        thongBao("Chưa chọn nhà cung cấp!");
+    	        return false;
+    	    }
 
-     // ====================== 3. TẠO PHIẾU NHẬP ======================
+    	    Set<String> loSet = new HashSet<>();
+
+    	    for (int i = 0; i < model.getRowCount(); i++) {
+    	        String maThuoc = getCell(i, 0);
+    	        String soLo = getCell(i, 5);
+    	        String hsdStr = getCell(i, 7);
+    	        String slStr = getCell(i, 6);
+    	        String donGiaStr = getCell(i, 3);
+
+    	        if (maThuoc.isEmpty() || soLo.isEmpty() || hsdStr.isEmpty() || slStr.isEmpty()) {
+    	            thongBao("Dòng " + (i+1) + ": Thiếu thông tin bắt buộc!");
+    	            table.setRowSelectionInterval(i, i);
+    	            return false;
+    	        }
+    	        try {
+    	            Double sl = Double.parseDouble(slStr.replace(",", ""));
+    	            double donGia = parseMoney(donGiaStr);
+    	            if (sl <= 0 || donGia <= 0) {
+    	                thongBao("Dòng " + (i+1) + ": Số lượng hoặc đơn giá phải > 0!");
+    	                table.setRowSelectionInterval(i, i);
+    	                return false;
+    	            }
+    	        } catch (Exception e) {
+    	            thongBao("Dòng " + (i+1) + ": Số lượng hoặc đơn giá không hợp lệ!");
+    	            table.setRowSelectionInterval(i, i);
+    	            return false;
+    	        }
+    	        try {
+    	            LocalDate hsd = LocalDate.parse(hsdStr, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+    	            if (hsd.isBefore(LocalDate.now())) {
+    	                thongBao("Dòng " + (i+1) + ", Lô " + soLo + ": Thuốc đã hết hạn!");
+    	                table.setRowSelectionInterval(i, i);
+    	                return false;
+    	            }
+    	        } catch (Exception e) {
+    	            thongBao("Dòng " + (i+1) + ": Ngày hạn sử dụng sai định dạng (dd/MM/yyyy)!");
+    	            table.setRowSelectionInterval(i, i);
+    	            return false;
+    	        }
+
+    	        String key = maThuoc + "_" + soLo;
+    	        if (!loSet.add(key)) {
+    	            thongBao("Dòng " + (i+1) + ": Lô '" + soLo + "' bị trùng trong danh sách!");
+    	            table.setRowSelectionInterval(i, i);
+    	            return false;
+    	        }
+    	    }
+    	    return true;
+    	}
      private PhieuNhap taoPhieuNhap(String maPhieuNhap) {
          PhieuNhap pn = new PhieuNhap();
          pn.setMaPN(maPhieuNhap);
@@ -382,7 +467,7 @@ public class FormNhapHang extends javax.swing.JPanel {
          pn.setNhanVien(nguoiNhap);
 
          String tenNCC = cbNhaCungCap.getSelectedItem().toString().trim();
-         String maNCC = new NhaCungCapDao().getMaNCCByTen(tenNCC);
+         String maNCC = new NhaCungCapDAO().getMaNCCByTen(tenNCC);
          if (maNCC == null || maNCC.isEmpty()) maNCC = "NCC001";
 
          NhaCungCap ncc = new NhaCungCap();
@@ -392,75 +477,76 @@ public class FormNhapHang extends javax.swing.JPanel {
          return pn;
      }
 
-     // ====================== 4. LƯU PHIẾU NHẬP ======================
      private void luuPhieuNhap(PhieuNhap pn) throws Exception {
          if (!new PhieuNhapDAO().addPhieuNhap(pn)) {
              throw new Exception("Lưu phiếu nhập thất bại!");
          }
      }
-
-     // ====================== 5. LƯU CHI TIẾT + LÔ + TỰ ĐỘNG TẠO THUỐC ======================
+    private boolean isLoThuocDaTonTai(String maThuoc, String soLo) {
+    	    String sql = "SELECT 1 FROM LoThuoc WHERE maThuoc = ? AND maLo = ?";
+    	    try (Connection con = ConnectDB.getConnection();
+    	         PreparedStatement ps = con.prepareStatement(sql)) {
+    	        ps.setString(1, maThuoc.trim());
+    	        ps.setString(2, soLo.trim());
+    	        return ps.executeQuery().next();
+    	    } catch (Exception e) {
+    	        e.printStackTrace();
+    	        return false;
+    	    }
+    	}
      private void luuChiTietVaLoThuoc(PhieuNhap pn) throws Exception {
-         ChiTietPhieuNhapDAO ctDao = new ChiTietPhieuNhapDAO();
-         LoThuocDAO loDao = new LoThuocDAO();
-         ThuocDAO thuocDao = new ThuocDAO();
+    	    ChiTietPhieuNhapDAO ctDao = new ChiTietPhieuNhapDAO();
+    	    LoThuocDAO loDao = new LoThuocDAO();
+    	    ThuocDAO thuocDao = new ThuocDAO();
 
-         for (int i = 0; i < model.getRowCount(); i++) {
-             String maThuoc = getCell(i, 0);
-             String tenThuoc = getCell(i, 1);
-             String donViTinh = getCell(i, 2);
-             double donGia = parseMoney(getCell(i, 3));
-             int soLuongTong = Integer.parseInt(getCell(i, 4).replace(".", ""));
-             String soLo = getCell(i, 5);
-             int soLuongLo = Integer.parseInt(getCell(i, 6).replace(".", ""));
-             String hsdStr = getCell(i, 7);
-             double thanhTien = donGia * soLuongLo;
-             LocalDate hanSuDung = LocalDate.parse(hsdStr, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+    	    for (int i = 0; i < model.getRowCount(); i++) {
+    	        String maThuoc = getCell(i, 0);
+    	        String tenThuoc = getCell(i, 1);
+    	        String donViTinh = getCell(i, 2);
+    	        double donGia = parseMoney(getCell(i, 3));
+    	        String soLo = getCell(i, 5);
+    	        int soLuongLo = parseIntFromCell(getCell(i, 6));
+    	        LocalDate hanSuDung = LocalDate.parse(getCell(i, 7), DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+    	        double thanhTien = donGia * soLuongLo;
 
-             if (thuocDao.getThuocById(maThuoc) == null) {
-                 Thuoc t = new Thuoc();
-                 t.setMaThuoc(maThuoc);
-                 t.setTenThuoc(tenThuoc.isEmpty() ? "Thuốc mới" : tenThuoc);
-                 t.setDonViTinh(donViTinh.isEmpty() ? "Hộp" : donViTinh);
-                 t.setHoatChat(null);
-                 t.setTrangThai(true);
+    	        if (thuocDao.getThuocById(maThuoc) == null) {
+    	            Thuoc t = new Thuoc();
+    	            t.setMaThuoc(maThuoc);
+    	            t.setTenThuoc(tenThuoc.isEmpty() ? "Thuốc mới" : tenThuoc);
+    	            t.setDonViTinh(donViTinh.isEmpty() ? "Hộp" : donViTinh);
+    	            t.setTrangThai(true);
 
-                 NhomThuoc nhom = new NhomThuoc();
-                 nhom.setMaNhom("NT001");
-                 t.setNhomThuoc(nhom);
+    	            NhomThuoc nhom = new NhomThuoc();
+    	            nhom.setMaNhom("NT001");
+    	            t.setNhomThuoc(nhom);
 
-                 thuocDao.insertThuoc(t);
-             }
+    	            thuocDao.insertThuoc(t);
+    	        }
+    	        if (isLoThuocDaTonTai(maThuoc, soLo)) {
+    	            throw new Exception("Dòng " + (i+1) + ": Lô '" + soLo + "' của thuốc '" + maThuoc + "' đã tồn tại trong hệ thống!");
+    	        }
+    	        LoThuoc lo = new LoThuoc();
+    	        lo.setMaLo(soLo);
+    	        lo.setThuoc(new Thuoc(maThuoc));
+    	        lo.setNgayNhap(LocalDate.now());
+    	        lo.setHanSuDung(hanSuDung);
+    	        lo.setSoLuongTon(soLuongLo);
+    	        lo.setTrangThai(true);
+    	        loDao.insertLoThuoc(lo);
 
-             // XỬ LÝ LÔ THUỐC
-             LoThuoc lo = loDao.getLoByMaLoAndMaThuoc(soLo, maThuoc);
-             if (lo == null) {
-                 lo = new LoThuoc();
-                 lo.setMaLo(soLo);
-                 lo.setThuoc(new Thuoc(maThuoc)); // chỉ cần mã
-                 lo.setNgayNhap(LocalDate.now());
-                 lo.setHanSuDung(hanSuDung);
-                 lo.setSoLuongTon(soLuongLo);
-                 lo.setTrangThai(true);
-                 loDao.insertLoThuoc(lo);
-             } 
-  
-             ChiTietPhieuNhap ct = new ChiTietPhieuNhap();
-             ct.setPn(pn);
-             ct.setThuoc(new Thuoc(maThuoc));
-             ct.setLoThuoc(lo);
-             ct.setHanSuDung(hanSuDung);
-             ct.setSoLuong(soLuongLo);
-             ct.setDonGia(donGia);
-             ct.setThanhTien(thanhTien);
+    	        ChiTietPhieuNhap ct = new ChiTietPhieuNhap();
+    	        ct.setPn(pn);
+    	        ct.setThuoc(new Thuoc(maThuoc));
+    	        ct.setLoThuoc(lo);
+    	        ct.setHanSuDung(hanSuDung);
+    	        ct.setSoLuong(soLuongLo);
+    	        ct.setDonGia(donGia);
+    	        ct.setThanhTien(thanhTien);
 
-             if (!ctDao.insert(ct)) {
-                 throw new Exception("Lưu chi tiết dòng " + (i + 1) + " thất bại!");
-             }
-         }
-     }
+    	        ctDao.insert(ct);
+    	    }
+    	}
 
-     // ====================== 6. CÁC HÀM HỖ TRỢ ======================
      private String getCell(int row, int col) {
          Object val = model.getValueAt(row, col);
          return val == null ? "" : val.toString().trim();
@@ -506,19 +592,7 @@ public class FormNhapHang extends javax.swing.JPanel {
          } catch (Exception e) {}
          return "PN0001";
      }
-     
-     private void actionHuy() {
-    	    int confirm = JOptionPane.showConfirmDialog(this, 
-    	            "Bạn có chắc muốn hủy phiếu nhập này?\nTất cả dữ liệu sẽ bị xóa.", 
-    	            "Xác nhận hủy", JOptionPane.YES_NO_OPTION);
-    	    
-    	    if (confirm == JOptionPane.YES_OPTION) {
-    	        model.setRowCount(0);
-    	        lbTongTien.setText("0 ₫");
-    	        txtGhiChu.setText("");
-    	        Notifications.getInstance().show(Notifications.Type.INFO, Notifications.Location.TOP_CENTER, "Đã hủy phiếu nhập.");
-    	    }
-    	}
+
      private void tinhTienHang() {
     	    isUpdating = true;
     	    double tongCong = 0;
@@ -550,7 +624,7 @@ public class FormNhapHang extends javax.swing.JPanel {
     	    } finally {
     	        isUpdating = false;
     	    }
-    	}// Thay toàn bộ hàm tinhTienHang() cũ bằng hàm này
+    	}
      private double tinhTienHang2() {
     	    isUpdating = true;
     	    double tongCong = 0;
@@ -558,7 +632,7 @@ public class FormNhapHang extends javax.swing.JPanel {
     	    try {
     	        for (int i = 0; i < model.getRowCount(); i++) {
     	            try {
-    	                // Cột 3: Đơn giá, Cột 6: Số lượng lô
+
     	                String giaStr = model.getValueAt(i, 3).toString()
     	                        .replace(".", "").replace("đ", "").trim();
     	                String slStr = model.getValueAt(i, 6).toString()
@@ -569,38 +643,30 @@ public class FormNhapHang extends javax.swing.JPanel {
 
     	                double thanhTien = donGia * soLuong;
 
-    	                // Cập nhật cột Thành tiền (cột 8)
     	                model.setValueAt(formatMoney(thanhTien), i, 8);
 
     	                tongCong += thanhTien;
     	            } catch (Exception e) {
-    	                model.setValueAt("0 đ", i, 8); // tránh lỗi hiển thị
+    	                model.setValueAt("0 đ", i, 8); 
     	            }
     	        }
-
-    	        // Cập nhật tổng cộng lên giao diện
     	        lbTongTien.setText(formatMoney(tongCong));
-
     	    } finally {
     	        isUpdating = false;
     	    }
-
     	    return tongCong;
     	} 
      private double parseMoney(String moneyStr) {
     	    if (moneyStr == null || moneyStr.trim().isEmpty()) {
     	        return 0.0;
     	    }
-
-    	    // Loại bỏ mọi ký tự không phải số hoặc dấu chấm
     	    String clean = moneyStr
     	            .replace("đ", "")
     	            .replace("Đ", "")
     	            .replace(".", "")
-    	            .replace(",", "")   // nếu có ai dùng dấu phẩy
+    	            .replace(",", "")  
     	            .replace(" ", "")
     	            .trim();
-
     	    try {
     	        return Double.parseDouble(clean);
     	    } catch (NumberFormatException e) {
@@ -630,7 +696,83 @@ public class FormNhapHang extends javax.swing.JPanel {
                     return "";
             }
         }
-        private String getCellString(Cell cell) {
+    private static class ExcelImportError {
+        final int row;         
+        final String message;
+
+        ExcelImportError(int row, String message) {
+            this.row = row;
+            this.message = message;
+        }
+    }
+    private List<ExcelImportError> validateExcelData(Sheet sheet) {
+        List<ExcelImportError> errors = new ArrayList<>();
+        Set<String> maThuocSet = new HashSet<>();   
+        Set<String> loKeySet = new HashSet<>();     
+
+        final int LOT_START_COL = 5;
+
+        for (int r = 1; r <= sheet.getLastRowNum(); r++) {
+            Row row = sheet.getRow(r);
+            if (row == null) continue;
+            int excelRow = r + 1;
+            String ma = getCellString(row.getCell(0));
+            String ten = getCellString(row.getCell(1));
+            String dvt = getCellString(row.getCell(2));
+            Double dongia = getCellNumber(row.getCell(3));
+            if (ma == null || ma.trim().isEmpty()) {
+                errors.add(new ExcelImportError(excelRow, "Mã thuốc không được để trống"));
+                continue; 
+            }
+            if (dongia == null || dongia <= 0) {
+                errors.add(new ExcelImportError(excelRow, "Đơn giá phải lớn hơn 0"));
+            }
+            if (!maThuocSet.add(ma.trim().toUpperCase())) {
+                errors.add(new ExcelImportError(excelRow, "Mã thuốc '" + ma + "' bị trùng trong file"));
+            }
+            int lastCellNum = row.getLastCellNum();
+            if (lastCellNum <= LOT_START_COL) {
+                errors.add(new ExcelImportError(excelRow, "Không có dữ liệu lô nào"));
+                continue;
+            }
+            boolean coLoHopLe = false;
+            for (int c = LOT_START_COL; c + 2 < lastCellNum; c += 3) {
+                String lo = getCellString(row.getCell(c));
+                Date hsdDate = getCellDate(row.getCell(c + 1));
+                Double sl = getCellNumber(row.getCell(c + 2));
+                boolean allEmpty = (lo == null || lo.trim().isEmpty())
+                        && hsdDate == null
+                        && (sl == null || sl <= 0);
+                if (allEmpty) continue;
+                coLoHopLe = true;
+                if (lo == null || lo.trim().isEmpty()) {
+                    errors.add(new ExcelImportError(excelRow, "Số lô không được để trống (cột " + (c+1) + ")"));
+                }
+                if (hsdDate == null) {
+                    errors.add(new ExcelImportError(excelRow, "Hạn sử dụng không hợp lệ (lô: " + lo + ")"));
+                } else {
+                    LocalDate hsd = hsdDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+                    if (hsd.isBefore(LocalDate.now())) {
+                        errors.add(new ExcelImportError(excelRow, "Thuốc đã hết hạn: " + hsd.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " (lô: " + lo + ")"));
+                    }
+                }
+                if (sl == null || sl <= 0) {
+                    errors.add(new ExcelImportError(excelRow, "Số lượng lô phải > 0 (lô: " + lo + ")"));
+                }
+                String key = ma.trim() + "_" + (lo != null ? lo.trim() : "");
+                if (!loKeySet.add(key)) {
+                    errors.add(new ExcelImportError(excelRow, "Lô '" + lo + "' bị trùng với lô khác của cùng mã thuốc trong file"));
+                }
+            }
+            if (!coLoHopLe) {
+                errors.add(new ExcelImportError(excelRow, "Có mã thuốc nhưng không có lô hợp lệ nào"));
+            }
+        }
+        return errors;
+    }
+    
+    
+    private String getCellString(Cell cell) {
             if (cell == null) return "";
             CellType type = cell.getCellType();
             switch (type) {
@@ -705,6 +847,33 @@ public class FormNhapHang extends javax.swing.JPanel {
         DecimalFormat df = new DecimalFormat("#,###");
         return df.format(money).replace(",", ".") + " đ";
     }
+     private int parseIntFromCell(String raw) {
+        if (raw == null) return 0;
+        String s = raw.trim().replaceAll("\\s+", ""); 
+        if (s.isEmpty()) return 0;
+        if (s.contains(".") && s.contains(",")) {
+            s = s.replace(".", "");  
+            s = s.replace(',', '.');  
+        } else if (s.contains(",")) {
+            s = s.replace(',', '.');
+        } else {
+            int firstDot = s.indexOf('.');
+            int lastDot = s.lastIndexOf('.');
+            if (firstDot != lastDot) {
+                s = s.replace(".", "");
+            }
+        }
+        double d;
+        try {
+            d = Double.parseDouble(s);
+        } catch (NumberFormatException ex) {
+            String fallback = s.replaceAll("[^0-9.\\-]", "");
+            if (fallback.isEmpty()) return 0;
+            d = Double.parseDouble(fallback);
+        }
+        return (int) Math.round(d);
+}
+
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {

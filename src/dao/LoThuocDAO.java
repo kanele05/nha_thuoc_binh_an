@@ -10,21 +10,18 @@ import java.util.ArrayList;
 
 public class LoThuocDAO {
 
-    private ThuocDAO thuocDAO;
+    private ThuocDAO thuocDAO = new ThuocDAO();
     public LoThuocDAO(){
-        this.thuocDAO = new ThuocDAO();
     }
 
-    public ArrayList<LoThuoc> getAllLoThuoc() {
+    public ArrayList<LoThuoc> getAllLoThuoc() throws SQLException {
         ArrayList<LoThuoc> ds = new ArrayList<>();
-        try {
-            ConnectDB.getInstance();
+     
+        try {       
             Connection con = ConnectDB.getConnection();
-
-            String sql = "SELECT * FROM LoThuoc";
-            Statement stmt = con.createStatement();
-            ResultSet rs = stmt.executeQuery(sql);
-
+            String sql = "Select * From LoThuoc";
+            Statement st = con.createStatement();
+            ResultSet rs = st.executeQuery(sql);
             while (rs.next()) {
                 String maLo = rs.getString("maLo");
                 String maThuoc = rs.getString("maThuoc");
@@ -41,7 +38,6 @@ public class LoThuocDAO {
                         soLuongTon,
                         trangThai
                 );
-
                 ds.add(lt);
             }
 
@@ -50,6 +46,7 @@ public class LoThuocDAO {
         }
         return ds;
     }
+
     public LoThuoc getLoByMa(String maLo) {
         try {
             ConnectDB.getInstance();
