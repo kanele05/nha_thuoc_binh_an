@@ -1,5 +1,7 @@
 package gui.application.form;
 
+import gui.application.form.NhaCungCap.FormNhaCungCap;
+import gui.application.form.LoThuoc.FormQuanLyLoThuoc;
 import gui.application.form.PhieuNhap.FormDanhSachPhieuNhap;
 import gui.application.form.PhieuNhap.FormNhapHang;
 import com.formdev.flatlaf.FlatClientProperties;
@@ -21,6 +23,9 @@ import gui.application.Application;
 import gui.application.form.other.FormDashboard;
 import gui.menu.Menu;
 import gui.menu.MenuAction;
+import java.sql.SQLException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import raven.application.form.FormNhanVien;
 
 /**
@@ -100,7 +105,12 @@ public class MainForm extends JLayeredPane {
                     Application.showForm(new FormNhapHang());
                 }
             }else if (index == 4) { 
-                Application.showForm(new FormQuanLyLoThuoc());
+                try {
+                    Application.showForm(new FormQuanLyLoThuoc());
+                } catch (SQLException ex) {
+                    Logger.getLogger(MainForm.class.getName()).log(Level.SEVERE, null, ex);
+                }
+             
             }else if (index == 5) { 
                if (subIndex == 1) {
                     Application.showForm(new FormBangGia());
@@ -125,7 +135,7 @@ public class MainForm extends JLayeredPane {
                     Application.showForm(form);
                     form.openThemMoi(); 
                 }
-            }else if (index == 8) { // Nhà cung cấp
+            }else if (index == 8) { 
                 Application.showForm(new FormNhaCungCap());
             }else if (index == 9) { // Báo cáo
                 if (subIndex == 1) { // Báo cáo doanh thu

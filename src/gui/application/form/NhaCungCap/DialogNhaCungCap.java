@@ -1,4 +1,4 @@
-package gui.application.form;
+package gui.application.form.NhaCungCap;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import java.awt.Component;

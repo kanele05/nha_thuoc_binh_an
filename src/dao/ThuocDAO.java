@@ -79,6 +79,28 @@ public class ThuocDAO {
         }
         return thuoc;
     }
+    public String getTenThuocById(String maThuoc) {
+        String tenThuoc = null;
+        String sql = "SELECT tenThuoc FROM Thuoc WHERE maThuoc = ?";
+
+        try {
+            Connection con = ConnectDB.getConnection();
+            PreparedStatement ps = con.prepareStatement(sql);
+            ps.setString(1, maThuoc);
+
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                tenThuoc = rs.getString("tenThuoc");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return tenThuoc;
+    }
+
     public boolean insertThuoc(Thuoc t) {
         String sql = "INSERT INTO Thuoc(maThuoc, tenThuoc, hoatChat, donViTinh, trangThai, maNhom) " +
                      "VALUES(?, ?, ?, ?, ?, ?)";

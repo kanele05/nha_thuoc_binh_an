@@ -12,11 +12,8 @@ import java.util.ArrayList;
 public class PhieuNhapDAO {
 
     public PhieuNhapDAO() {}
-
-    // GET ALL
     public ArrayList<PhieuNhap> getAllPhieuNhap() {
         ArrayList<PhieuNhap> list = new ArrayList<>();
-
         try {
             ConnectDB.getInstance();
             Connection con = ConnectDB.getConnection();

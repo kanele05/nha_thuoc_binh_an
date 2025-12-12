@@ -1,12 +1,19 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
- */
 package gui.application.form.PhieuNhap;
 
 import com.formdev.flatlaf.FlatClientProperties;
+
+import dao.NhaCungCapDAO;
+import dao.PhieuNhapDAO;
+import entities.NhaCungCap;
+import entities.NhanVien;
+import entities.PhieuNhap;
+
 import java.awt.Color;
 import java.awt.Component;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Iterator;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
@@ -19,6 +26,8 @@ public class FormDanhSachPhieuNhap extends javax.swing.JPanel {
     private JComboBox<String> cbThoiGian;
     private JTable table;
     private DefaultTableModel model;
+    private PhieuNhapDAO pnDao = new PhieuNhapDAO();
+    private NhaCungCapDAO nccDao = new NhaCungCapDAO();
     public FormDanhSachPhieuNhap() {
         initComponents();
         init();
@@ -26,13 +35,8 @@ public class FormDanhSachPhieuNhap extends javax.swing.JPanel {
     private void init() {
         setLayout(new MigLayout("wrap,fill,insets 20", "[fill]", "[][][grow]"));
 
-        // 1. Header
         add(createHeaderPanel(), "wrap 20");
-
-        // 2. Toolbar
         add(createToolBarPanel(), "wrap 10");
-
-        // 3. Table
         add(createTablePanel(), "grow");
         
         loadData();
@@ -72,10 +76,8 @@ public class FormDanhSachPhieuNhap extends javax.swing.JPanel {
         panel.add(txtTimKiem, "w 250");
         panel.add(cbThoiGian);
         panel.add(cbTrangThai);
-        
         panel.add(btnXemChiTiet);
         panel.add(btnXacNhan);
-
         return panel;
     }
 
@@ -84,7 +86,7 @@ public class FormDanhSachPhieuNhap extends javax.swing.JPanel {
         panel.putClientProperty(FlatClientProperties.STYLE, "arc:20; background:darken(@background,3%)");
         panel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
-        String[] columns = {"Mã Phiếu", "Nhà Cung Cấp", "Ngày Tạo", "Người Nhập", "Tổng Tiền", "Trạng Thái"};
+        String[] columns = {"Mã Phiếu", "Ngày Tạo", "Tổng Tiền", "Người Nhập", "Nhà Cung Cấp","Trạng Thái" };
         model = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -105,8 +107,7 @@ public class FormDanhSachPhieuNhap extends javax.swing.JPanel {
         panel.add(new JScrollPane(table));
         return panel;
     }
-    
-    // --- RENDERER ---
+
     private class RightAlignRenderer extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
@@ -137,15 +138,28 @@ public class FormDanhSachPhieuNhap extends javax.swing.JPanel {
             return com;
         }
     }
-
-    // --- LOGIC ---
-    
     private void loadData() {
-        // Mock data
-        model.addRow(new Object[]{"PN005", "Công ty Dược Hậu Giang", "08/12/2023", "Admin", "15.000.000 ₫", "Đang chờ nhập hàng"});
-        model.addRow(new Object[]{"PN004", "Sanofi Việt Nam", "07/12/2023", "NhanVien1", "8.500.000 ₫", "Đã nhập hàng"});
-        model.addRow(new Object[]{"PN003", "Zuellig Pharma", "05/12/2023", "Admin", "22.100.000 ₫", "Đã nhập hàng"});
-        model.addRow(new Object[]{"PN002", "Dược phẩm OPC", "01/12/2023", "Admin", "5.000.000 ₫", "Đã hủy"});
+        model.setRowCount(0);
+        
+        ArrayList<PhieuNhap> list = pnDao.getAllPhieuNhap();
+        for(PhieuNhap pn : list) {
+        	String maNcc = pn.getNcc().getMaNCC();
+        	String tenNv = new String("Admin");
+        	String tenNcc = nccDao.getTenNCCByMa(maNcc);
+        	if(tenNcc == null) tenNcc = maNcc;
+        	String ngayTao = pn.getNgayTao().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        	String tongTien = String.format("%,.0f đ", pn.getTongTien());
+        
+        	model.addRow(new Object[] {
+        		pn.getMaPN(),
+        		ngayTao,
+        		tongTien,
+        		tenNv,
+        		tenNcc,
+                        pn.getTrangThai(),
+        	});
+        
+        }
     }
 
     private void actionXacNhan() {
@@ -157,8 +171,7 @@ public class FormDanhSachPhieuNhap extends javax.swing.JPanel {
         
         String currentStatus = model.getValueAt(row, 5).toString();
         String maPhieu = model.getValueAt(row, 0).toString();
-        
-        // Kiểm tra logic trạng thái
+
         if (currentStatus.equals("Đã nhập hàng")) {
             Notifications.getInstance().show(Notifications.Type.WARNING, Notifications.Location.TOP_CENTER, "Phiếu này đã nhập kho rồi!");
             return;
@@ -168,7 +181,6 @@ public class FormDanhSachPhieuNhap extends javax.swing.JPanel {
             return;
         }
 
-        // Xác nhận
         int confirm = JOptionPane.showConfirmDialog(this, 
                 "Xác nhận hàng mã phiếu " + maPhieu + " đã về kho đầy đủ?\n" +
                 "Hệ thống sẽ cập nhật số lượng tồn kho.", 
